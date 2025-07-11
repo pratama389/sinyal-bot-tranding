@@ -1,0 +1,178 @@
+import requests
+import json
+from datetime import datetime
+
+# Base URL (ganti dengan URL server kamu)
+BASE_URL = "http://localhost:5000"  # Untuk test local
+# BASE_URL = "https://your-app-name.onrender.com"  # Untuk production
+
+def test_health():
+    """Test health check endpoint"""
+    print("🔍 Testing health check...")
+    try:
+        response = requests.get(f"{BASE_URL}/health")
+        print(f"✅ Health Status: {response.status_code}")
+        print(f"📄 Response: {response.json()}")
+    except Exception as e:
+        print(f"❌ Health check failed: {e}")
+    print("-" * 50)
+
+def test_single_signal(symbol):
+    """Test single signal endpoint"""
+    print(f"🔍 Testing signal for {symbol}...")
+    try:
+        response = requests.get(f"{BASE_URL}/signal/{symbol}")
+        print(f"✅ Signal Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print(f"📊 Symbol: {data.get('symbol')}")
+            print(f"💰 Current Price: ${data.get('current_price')}")
+            print(f"📈 RSI: {data.get('rsi')}")
+            print(f"🎯 Action: {data.get('action', 'N/A')}")
+            
+            if data.get('action') in ['BUY', 'SELL']:
+                print(f"🔹 Entry: ${data.get('entry_price')}")
+                print(f"🎯 TP: ${data.get('tp_price')} ({data.get('pips_tp')} pips)")
+                print(f"🛡️ SL: ${data.get('sl_price')} ({data.get('pips_sl')} pips)")
+                print(f"📊 Order Type: {data.get('order_type')}")
+                print(f"⚡ RR: {data.get('risk_reward')}")
+        else:
+            print(f"❌ Error: {response.json()}")
+            
+    except Exception as e:
+        print(f"❌ Signal test failed: {e}")
+    print("-" * 50)
+
+def test_all_signals():
+    """Test all signals endpoint"""
+    print("🔍 Testing all signals...")
+    try:
+        response = requests.get(f"{BASE_URL}/signals/all")
+        print(f"✅ All Signals Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print(f"📊 Total Pairs: {data.get('total_pairs')}")
+            print(f"⏰ Timestamp: {data.get('timestamp')}")
+            
+            for symbol, signal in data.get('signals', {}).items():
+                print(f"\n🔸 {symbol}:")
+                print(f"   💰 Price: ${signal.get('current_price')}")
+                print(f"   📈 RSI: {signal.get('rsi')}")
+                print(f"   🎯 Action: {signal.get('action', 'N/A')}")
+                
+                if signal.get('action') in ['BUY', 'SELL']:
+                    print(f"   🔹 Entry: ${signal.get('entry_price')}")
+                    print(f"   🎯 TP: ${signal.get('tp_price')}")
+                    print(f"   🛡️ SL: ${signal.get('sl_price')}")
+        else:
+            print(f"❌ Error: {response.json()}")
+            
+    except Exception as e:
+        print(f"❌ All signals test failed: {e}")
+    print("-" * 50)
+
+def test_multiple_signals():
+    """Test multiple signals endpoint"""
+    print("🔍 Testing multiple signals...")
+    try:
+        payload = {
+            "symbols": ["BTCUSD", "EURUSD", "XAUUSD"]
+        }
+        
+        response = requests.post(
+            f"{BASE_URL}/signals/multiple",
+            json=payload,
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        print(f"✅ Multiple Signals Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            for symbol, signal in data.items():
+                print(f"\n🔸 {symbol}:")
+                print(f"   💰 Price: ${signal.get('current_price')}")
+                print(f"   📈 RSI: {signal.get('rsi')}")
+                print(f"   🎯 Action: {signal.get('action', 'N/A')}")
+        else:
+            print(f"❌ Error: {response.json()}")
+            
+    except Exception as e:
+        print(f"❌ Multiple signals test failed: {e}")
+    print("-" * 50)
+
+def format_signal_output(signal_data):
+    """Format output seperti yang akan dikirim ke Telegram"""
+    if signal_data.get('action') in ['BUY', 'SELL']:
+        emoji = "🟢" if signal_data['action'] == 'BUY' else "🔴"
+        
+        output = f"""
+🚨 Sinyal {signal_data['action']} {signal_data['symbol']} Detected (M5)
+
+📊 RSI: {signal_data.get('rsi', 'N/A'):.1f}
+📊 MACD: {signal_data.get('macd', {}).get('macd', 'N/A'):.4f}
+📊 Support: ${signal_data.get('support', 'N/A'):.2f}
+📊 Resistance: ${signal_data.get('resistance', 'N/A'):.2f}
+
+📌 Pending Order:
+{emoji} {signal_data.get('order_type', 'N/A')} @ ${signal_data.get('entry_price', 'N/A'):.2f}
+
+🎯 TP: ${signal_data.get('tp_price', 'N/A'):.2f} ({signal_data.get('pips_tp', 'N/A')} pips)
+🛡️ SL: ${signal_data.get('sl_price', 'N/A'):.2f} ({signal_data.get('pips_sl', 'N/A')} pips)
+
+🔁 RR: {signal_data.get('risk_reward', 'N/A')}
+⏰ Timeframe: M5
+🕐 Time: {datetime.now().strftime('%H:%M:%S')}
+        """
+        
+        return output.strip()
+    
+    return f"📊 {signal_data.get('symbol', 'N/A')}: {signal_data.get('action', 'HOLD')} - {signal_data.get('reason', 'No signal')}"
+
+if __name__ == "__main__":
+    print("🚀 TESTING SINYAL BOT TRADING API")
+    print("=" * 50)
+    
+    # Test 1: Health Check
+    test_health()
+    
+    # Test 2: Single Signals
+    pairs = ["BTCUSD", "EURUSD", "XAUUSD", "ETHUSD", "USDJPY"]
+    for pair in pairs:
+        test_single_signal(pair)
+    
+    # Test 3: All Signals
+    test_all_signals()
+    
+    # Test 4: Multiple Signals
+    test_multiple_signals()
+    
+    print("🎉 ALL TESTS COMPLETED!")
+    print("=" * 50)
+    
+    # Demo format output
+    print("\n📱 DEMO OUTPUT FORMAT UNTUK TELEGRAM:")
+    print("=" * 50)
+    
+    # Contoh signal BUY
+    demo_signal = {
+        'symbol': 'BTCUSD',
+        'action': 'BUY',
+        'current_price': 45230.50,
+        'rsi': 28.5,
+        'macd': {'macd': 0.0124},
+        'support': 45100.00,
+        'resistance': 45500.00,
+        'entry_price': 45180.00,
+        'tp_price': 45280.00,
+        'sl_price': 45130.00,
+        'order_type': 'BUY_LIMIT',
+        'pips_tp': 100,
+        'pips_sl': 50,
+        'risk_reward': '1:2'
+    }
+    
+    print(format_signal_output(demo_signal))
